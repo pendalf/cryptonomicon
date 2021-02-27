@@ -116,7 +116,7 @@
             :key="t.name"
             @click="select(t)"
             :class="{
-              'border-4': sel === t
+              'border-4': selectedTicker === t
             }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
@@ -151,9 +151,9 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
       </template>
-      <section v-if="sel" class="relative">
+      <section v-if="selectedTicker" class="relative">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ sel.name }}- USD
+          {{ selectedTicker.name }}- USD
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
@@ -164,7 +164,7 @@
           ></div>
         </div>
         <button
-          @click="sel = null"
+          @click="selectedTicker = null"
           type="button"
           class="absolute top-0 right-0"
         >
@@ -205,7 +205,7 @@ export default {
       filter: "",
 
       tickers: [],
-      sel: null,
+      selectedTicker: null,
       graph: [],
       page: 1,
       onLoad: false,
@@ -225,7 +225,7 @@ export default {
     }
 
     if (windowData.page) {
-      this.filter = windowData.page;
+      this.page = windowData.page;
     }
 
     const tickersData = localStorage.getItem("cryptonomicon-list");
@@ -255,12 +255,21 @@ export default {
     normalizedGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
+      if (maxValue === minValue) {
+        return this.graph.map(() => 50);
+      }
       return this.graph.map(
         price => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
     },
     hasNextPage() {
       return this.filteredTickers.length > this.endIndex;
+    },
+    pageStateOptions() {
+      return {
+        filter: this.filter,
+        page: this.page
+      };
     }
   },
 
@@ -273,7 +282,7 @@ export default {
         const data = await f.json();
         this.tickers.find(t => t.name === tickerName).price =
           data.USD > 1 ? data.USD.toFixed(2) : data.USD?.toPrecision(2) || null;
-        if (this.sel?.name === tickerName) {
+        if (this.selectedTicker?.name === tickerName) {
           this.graph.push(data.USD);
         }
       }, 3000);
@@ -284,7 +293,7 @@ export default {
         price: "-"
       };
       if (!this.isAdded()) {
-        this.tickers.push(currentTicker);
+        this.tickers = [...this.tickers, currentTicker];
         this.subscribeToUpdates(currentTicker.name);
 
         this.ticker = "";
@@ -293,17 +302,17 @@ export default {
       } else {
         this.warning = true;
       }
-
-      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
     },
 
     select(ticker) {
-      this.sel = ticker;
-      this.graph = [];
+      this.selectedTicker = ticker;
     },
 
     handleDelete(tickerToRemove) {
       this.tickers = this.tickers.filter(t => t !== tickerToRemove);
+      if (this.selectedTicker === tickerToRemove) {
+        this.selectedTicker = null;
+      }
     },
 
     getCoinlist() {
@@ -344,23 +353,25 @@ export default {
     }
   },
   watch: {
+    selectedTicker() {
+      this.graph = [];
+    },
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.page > 1) {
+        this.page -= 1;
+      }
+    },
+    tickers() {
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+    },
     filter() {
       this.page = 1;
-
-      // const currentURL = new URL(window.location);
-      // const { protocol, host, pathname } = window.location;
-
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
-      );
     },
-    page() {
+    pageStateOptions(v) {
       window.history.pushState(
         null,
         document.title,
-        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+        `${window.location.pathname}?filter=${v.filter}&page=${v.page}`
       );
     }
   }
