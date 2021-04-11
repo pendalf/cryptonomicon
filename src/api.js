@@ -9,12 +9,22 @@ const socket = new WebSocket(
 const AGGREGATED_INDEX = "5";
 
 socket.addEventListener("message", e => {
-  const { TYPE: type, FROMSYMBOL: currency, PRICE: newPrice } = JSON.parse(
-    e.data
-  );
-  if (type !== AGGREGATED_INDEX || newPrice === undefined) {
+  const {
+    TYPE: type,
+    FROMSYMBOL: validCurrency,
+    PRICE: newPrice,
+    PARAMETER: parameter,
+    MESSAGE: message
+  } = JSON.parse(e.data);
+  let invalidCurrency;
+
+  if (type === "500" && message === "INVALID_SUB") {
+    invalidCurrency = parameter.replace(/^[^~]*~[^~]*~([^~]*).*$/, "$1");
+  } else if (type !== AGGREGATED_INDEX || newPrice === undefined) {
     return;
   }
+  const currency = validCurrency || invalidCurrency;
+  console.log(currency);
   const handlers = tickersHandlers.get(currency) ?? [];
   handlers.forEach(fn => fn(newPrice));
 });

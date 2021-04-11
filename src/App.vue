@@ -115,9 +115,12 @@
             v-for="t in paginatedTickers"
             :key="t.name"
             @click="select(t)"
-            :class="{
-              'border-4': selectedTicker === t
-            }"
+            :class="[
+              {
+                'border-4': selectedTicker === t
+              },
+              t.status ? 'bg-white' : 'bg-red-100'
+            ]"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -287,7 +290,8 @@ export default {
           if (t === this.selectedTicker) {
             this.graph.push(price);
           }
-          t.price = price;
+          price ? (t.price = price) : (t.status = false);
+          // t.price = price;
         });
     },
     formatPrice(price) {
@@ -312,7 +316,8 @@ export default {
     add() {
       const currentTicker = {
         name: this.ticker,
-        price: "-"
+        price: "-",
+        status: true
       };
       if (!this.isAdded()) {
         this.tickers = [...this.tickers, currentTicker];
